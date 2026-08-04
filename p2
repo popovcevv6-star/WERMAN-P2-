@@ -180,7 +180,9 @@ local states = {
 	clickTP = false,
 	danceDisease = false,
 	seizure = false,
-	reverseFling = false
+	reverseFling = false,
+	seatTrap = false,
+	antiFling = false
 }
 
 local attachedPlayers = {}
@@ -212,10 +214,10 @@ local function startFling()
 	end
 end
 
-createToggle("Speed 2x", function(s) states.speed = s end)
-createToggle("Spinbot 360", function(s) states.extremeSpin = s end)
-createToggle("Snipebot Spin", function(s) states.spinbot = s end)
-createToggle("Touch Fling", function(s)
+createToggle("Скорость 2x", function(s) states.speed = s end)
+createToggle("Крутилка 360", function(s) states.extremeSpin = s end)
+createToggle("Снайпбот Крутилка", function(s) states.spinbot = s end)
+createToggle("Тач Флинг", function(s)
 	hiddenfling = s
 	states.fling = s
 	if hiddenfling then
@@ -223,7 +225,7 @@ createToggle("Touch Fling", function(s)
 		coroutine.resume(flingThread)
 	end
 end)
-createToggle("Time Stop", function(s) 
+createToggle("Стоп Время", function(s) 
 	states.timeStop = s 
 	if not s then
 		for _, p in ipairs(Players:GetPlayers()) do
@@ -238,13 +240,13 @@ createToggle("Time Stop", function(s)
 		end
 	end
 end)
-createToggle("Freeze Screen Touch", function(s) states.freezeScreen = s end)
-createToggle("Physics Tornado Aura", function(s) states.physicsTornado = s end)
-createToggle("Magnet Touch", function(s) 
+createToggle("Заморозка Экрана", function(s) states.freezeScreen = s end)
+createToggle("Физический Торнадо", function(s) states.physicsTornado = s end)
+createToggle("Магнит При Касании", function(s) 
 	states.magnet = s 
 	if not s then attachedPlayers = {} end 
 end)
-createToggle("Freeze Touch", function(s) 
+createToggle("Заморозка При Касании", function(s) 
 	states.freezeTouch = s 
 	if not s then
 		for plr, _ in pairs(frozenPlayers) do
@@ -253,21 +255,23 @@ createToggle("Freeze Touch", function(s)
 		frozenPlayers = {}
 	end
 end)
-createToggle("Head Spin Lag", function(s) states.headSpin = s end)
-createToggle("Body Dismantle Touch", function(s) states.dismantle = s end)
-createToggle("Camera Shaker Aura", function(s) states.cameraShaker = s end)
-createToggle("ESP Boxes", function(s) 
+createToggle("Вращение Головы", function(s) states.headSpin = s end)
+createToggle("Разборка Тела", function(s) states.dismantle = s end)
+createToggle("Тряска Камеры", function(s) states.cameraShaker = s end)
+createToggle("ЕСП Боксы", function(s) 
 	states.esp = s 
 	if not s then
 		for _, b in pairs(espBoxes) do pcall(function() b:Destroy() end) end
 		espBoxes = {}
 	end
 end)
-createToggle("Heavy Mass", function(s) states.heavyMass = s end)
-createToggle("Click TP", function(s) states.clickTP = s end)
-createToggle("Dance Disease", function(s) states.danceDisease = s end)
-createToggle("Seizure Character", function(s) states.seizure = s end)
-createToggle("Reverse Fling Aura", function(s) states.reverseFling = s end)
+createToggle("Тяжелая Масса", function(s) states.heavyMass = s end)
+createToggle("Клик Телепорт", function(s) states.clickTP = s end)
+createToggle("Танец Болезнь", function(s) states.danceDisease = s end)
+createToggle("Судороги Персонажа", function(s) states.seizure = s end)
+createToggle("Обратный Флинг", function(s) states.reverseFling = s end)
+createToggle("Невидимый Стул", function(s) states.seatTrap = s end)
+createToggle("Анти Флинг", function(s) states.antiFling = s end)
 
 UserInputService.InputBegan:Connect(function(input, gpe)
 	if gpe or not states.clickTP then return end
@@ -298,6 +302,25 @@ local function setupTouch(char)
 				pcall(function()
 					targetHrp.CFrame = CFrame.new(0, -99999, 0)
 					targetHrp.Anchored = true
+				end)
+			end
+
+			if states.seatTrap and targetHrp then
+				pcall(function()
+					local seat = Instance.new("Seat")
+					seat.Size = Vector3.new(1, 1, 1)
+					seat.Transparency = 1
+					seat.Anchored = false
+					seat.CFrame = targetHrp.CFrame + Vector3.new(0, 3, 0)
+					seat.Parent = workspace
+					local weld = Instance.new("Weld")
+					weld.Part0 = seat
+					weld.Part1 = targetHrp
+					weld.C0 = CFrame.new(0, 0, 0)
+					weld.Parent = seat
+					task.delay(3, function()
+						pcall(function() seat:Destroy() end)
+					end)
 				end)
 			end
 
@@ -352,6 +375,11 @@ LocalPlayer.CharacterAdded:Connect(setupTouch)
 RunService.RenderStepped:Connect(function()
 	local myChar = LocalPlayer.Character
 	local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+
+	if states.antiFling and myHrp then
+		myHrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+		myHrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+	end
 
 	if states.speed and myChar then
 		local hum = myChar:FindFirstChildOfClass("Humanoid")
