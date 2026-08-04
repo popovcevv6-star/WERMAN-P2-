@@ -31,7 +31,7 @@ local function stroke(obj, color, thickness)
 	return s
 end
 
--- Круглая кнопка меню
+-- Плавающая круглая кнопка
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "ToggleCircle"
 ToggleBtn.Parent = ScreenGui
@@ -189,10 +189,46 @@ local attachedPlayers = {}
 local frozenPlayers = {}
 local espBoxes = {}
 
+-- === ТОЧНАЯ ЛОГИКА С ФОТОГРАФИИ (Hidden Touch Fling) ===
+local hiddenfling = false
+local flingThread
+
+local function startFling()
+	local lp = LocalPlayer
+	local c, hrp, vel
+	local movel = 0.1
+
+	while hiddenfling do
+		RunService.Heartbeat:Wait()
+		c = lp.Character
+		hrp = c and c:FindFirstChild("HumanoidRootPart")
+
+		if hrp then
+			vel = hrp.Velocity
+			hrp.Velocity = vel * 10000 + Vector3.new(0, 10000, 0)
+			RunService.RenderStepped:Wait()
+			hrp.Velocity = vel
+			RunService.Stepped:Wait()
+			hrp.Velocity = vel + Vector3.new(0, movel, 0)
+			movel = -movel
+		end
+	end
+end
+
 -- Кнопки
 createToggle("Speed 2x", function(s) states.speed = s end)
 createToggle("Snipebot (Spin)", function(s) states.snipebot = s end)
-createToggle("Touch Fling (Target)", function(s) states.fling = s end)
+
+-- Переключатель флинга со скрина
+createToggle("Touch Fling (Как на фото)", function(s)
+	hiddenfling = s
+	states.fling = s
+	if hiddenfling then
+		flingThread = coroutine.create(startFling)
+		coroutine.resume(flingThread)
+	end
+end)
+
 createToggle("Magnet (Touch)", function(s) 
 	states.magnet = s 
 	if not s then attachedPlayers = {} end 
@@ -233,8 +269,7 @@ UserInputService.InputBegan:Connect(function(input, gpe)
 	end
 end)
 
--- === РАБОЧИЙ ТАРГЕТНЫЙ TOUCH FLING (БЕЗ ВЫЛЕТА СЕБЯ) ===
-local isFlinging = false
+-- === ДОПОЛНИТЕЛЬНЫЕ ЭФФЕКТЫ ПРИ КАСАНИИ ===
 local function setupTouch(char)
 	if not char then return end
 	local hrp = char:WaitForChild("HumanoidRootPart", 5)
@@ -247,39 +282,6 @@ local function setupTouch(char)
 
 		if targetPlr and targetPlr ~= LocalPlayer then
 			local targetHrp = targetChar:FindFirstChild("HumanoidRootPart")
-
-			-- ИСТИННЫЙ TOUCH FLING (Телепорт-срез по целевому персонажу)
-			if states.fling and targetHrp and not isFlinging then
-				isFlinging = true
-				task.spawn(function()
-					local originalCF = hrp.CFrame
-					local oldVel = hrp.Velocity
-					local startTime = tick()
-					
-					-- 0.2 секунды жесткого контакта именно с жертвой
-					while tick() - startTime < 0.2 and targetHrp and targetHrp.Parent and hrp and hrp.Parent do
-						RunService.Heartbeat:Wait()
-						hrp.CFrame = targetHrp.CFrame
-						hrp.Velocity = Vector3.new(30000, 30000, 30000)
-						hrp.RotVelocity = Vector3.new(50000, 50000, 50000)
-					end
-
-					-- Возврат себя на место и сброс импульса
-					if hrp and hrp.Parent then
-						hrp.CFrame = originalCF
-						hrp.Velocity = Vector3.new(0, 0, 0)
-						hrp.RotVelocity = Vector3.new(0, 0, 0)
-					end
-					
-					-- Импульс отталкивания на саму жертву
-					pcall(function()
-						targetHrp.AssemblyLinearVelocity = Vector3.new(math.random(-20000, 20000), 30000, math.random(-20000, 20000))
-					end)
-					
-					task.wait(0.1)
-					isFlinging = false
-				end)
-			end
 
 			-- Magnet
 			if states.magnet and not table.find(attachedPlayers, targetPlr) then
@@ -323,7 +325,7 @@ end
 if LocalPlayer.Character then setupTouch(LocalPlayer.Character) end
 LocalPlayer.CharacterAdded:Connect(setupTouch)
 
--- === ОСНОВНОЙ ЦИКЛ РЕНДЕРА ===
+-- === ОСНОВНОЙ ЦИКЛ ===
 RunService.RenderStepped:Connect(function()
 	local myChar = LocalPlayer.Character
 	local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
@@ -339,7 +341,7 @@ RunService.RenderStepped:Connect(function()
 		myHrp.CFrame = myHrp.CFrame * CFrame.Angles(0, math.rad(180), 0)
 	end
 
-	-- Magnet (Прилипание)
+	-- Magnet
 	if states.magnet and myHrp then
 		for i = #attachedPlayers, 1, -1 do
 			local p = attachedPlayers[i]
