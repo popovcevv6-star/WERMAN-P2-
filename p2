@@ -1,0 +1,324 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+if not LocalPlayer then return end
+
+-- Очистка старого GUI при перезапуске
+pcall(function()
+	local oldGui = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("WermanP2Gui")
+	if oldGui then oldGui:Destroy() end
+end)
+
+-- === СОЗДАНИЕ ИНТЕРФЕЙСА ===
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "WermanP2Gui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local function round(obj, r)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, r)
+	c.Parent = obj
+end
+
+local function stroke(obj, color, thickness)
+	local s = Instance.new("UIStroke")
+	s.Color = color
+	s.Thickness = thickness or 1
+	s.Parent = obj
+	return s
+end
+
+-- Плавающая круглая кнопка открытия меню
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Name = "ToggleCircle"
+ToggleBtn.Parent = ScreenGui
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
+ToggleBtn.Position = UDim2.new(0.03, 0, 0.4, 0)
+ToggleBtn.Size = UDim2.new(0, 52, 0, 52)
+ToggleBtn.Text = "⚡"
+ToggleBtn.TextColor3 = Color3.fromRGB(0, 230, 255)
+ToggleBtn.TextSize = 24
+ToggleBtn.Font = Enum.Font.GothamBold
+ToggleBtn.Active = true
+ToggleBtn.Draggable = true
+round(ToggleBtn, 26)
+stroke(ToggleBtn, Color3.fromRGB(0, 230, 255), 2)
+
+-- Главное окно
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainFrame.Size = UDim2.new(0, 340, 0, 420)
+MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+MainFrame.ClipsDescendants = true
+MainFrame.Visible = false
+MainFrame.Active = true
+MainFrame.Draggable = true
+round(MainFrame, 16)
+stroke(MainFrame, Color3.fromRGB(0, 200, 255), 1.5)
+
+ToggleBtn.MouseButton1Click:Connect(function()
+	MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- Шапка (Header)
+local Header = Instance.new("Frame")
+Header.Parent = MainFrame
+Header.Size = UDim2.new(1, 0, 0, 45)
+Header.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
+Header.BorderSizePixel = 0
+
+local Title = Instance.new("TextLabel")
+Title.Parent = Header
+Title.Size = UDim2.new(1, -20, 1, 0)
+Title.Position = UDim2.new(0, 15, 0, 0)
+Title.Text = "werman p2"
+Title.TextColor3 = Color3.fromRGB(0, 230, 255)
+Title.TextSize = 18
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+local HeaderLine = Instance.new("Frame")
+HeaderLine.Parent = Header
+HeaderLine.Position = UDim2.new(0, 0, 1, -1)
+HeaderLine.Size = UDim2.new(1, 0, 0, 1)
+HeaderLine.BackgroundColor3 = Color3.fromRGB(30, 35, 50)
+HeaderLine.BorderSizePixel = 0
+
+-- Контейнер со скроллом для функций
+local Container = Instance.new("ScrollingFrame")
+Container.Parent = MainFrame
+Container.BackgroundTransparency = 1
+Container.Position = UDim2.new(0, 0, 0, 45)
+Container.Size = UDim2.new(1, 0, 1, -45)
+Container.CanvasSize = UDim2.new(0, 0, 0, 0)
+Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Container.ScrollBarThickness = 3
+Container.ScrollBarImageColor3 = Color3.fromRGB(0, 200, 255)
+
+local ListLayout = Instance.new("UIListLayout")
+ListLayout.Parent = Container
+ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ListLayout.Padding = UDim.new(0, 10)
+
+local Padding = Instance.new("UIPadding")
+Padding.Parent = Container
+Padding.PaddingTop = UDim.new(0, 12)
+Padding.PaddingLeft = UDim.new(0, 12)
+Padding.PaddingRight = UDim.new(0, 12)
+Padding.PaddingBottom = UDim.new(0, 12)
+
+-- Конструктор переключателей (Toggles)
+local function createToggle(titleText, callback)
+	local toggle = Instance.new("TextButton")
+	toggle.Parent = Container
+	toggle.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+	toggle.Size = UDim2.new(1, 0, 0, 46)
+	toggle.Text = ""
+	round(toggle, 10)
+	local strk = stroke(toggle, Color3.fromRGB(35, 35, 48), 1)
+
+	local title = Instance.new("TextLabel")
+	title.Parent = toggle
+	title.BackgroundTransparency = 1
+	title.Position = UDim2.new(0, 14, 0, 0)
+	title.Size = UDim2.new(0, 200, 1, 0)
+	title.Text = titleText
+	title.TextColor3 = Color3.fromRGB(220, 220, 240)
+	title.TextSize = 13
+	title.Font = Enum.Font.GothamSemibold
+	title.TextXAlignment = Enum.TextXAlignment.Left
+
+	local indicator = Instance.new("Frame")
+	indicator.Parent = toggle
+	indicator.AnchorPoint = Vector2.new(1, 0.5)
+	indicator.Position = UDim2.new(1, -12, 0.5, 0)
+	indicator.Size = UDim2.new(0, 38, 0, 20)
+	indicator.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+	round(indicator, 10)
+
+	local circle = Instance.new("Frame")
+	circle.Parent = indicator
+	circle.AnchorPoint = Vector2.new(0, 0.5)
+	circle.Position = UDim2.new(0, 3, 0.5, 0)
+	circle.Size = UDim2.new(0, 14, 0, 14)
+	circle.BackgroundColor3 = Color3.fromRGB(150, 150, 170)
+	round(circle, 7)
+
+	local state = false
+	toggle.MouseButton1Click:Connect(function()
+		state = not state
+		if state then
+			indicator.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+			circle.Position = UDim2.new(1, -17, 0.5, 0)
+			circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			strk.Color = Color3.fromRGB(0, 150, 200)
+		else
+			indicator.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+			circle.Position = UDim2.new(0, 3, 0.5, 0)
+			circle.BackgroundColor3 = Color3.fromRGB(150, 150, 170)
+			strk.Color = Color3.fromRGB(35, 35, 48)
+		end
+		pcall(function() callback(state) end)
+	end)
+end
+
+-- === ЛОГИКА ФУНКЦИЙ ===
+
+-- 1. Speed 2x
+local speedEnabled = false
+createToggle("Speed 2x", function(state)
+	speedEnabled = state
+	local char = LocalPlayer.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum.WalkSpeed = state and 32 or 16
+	end
+end)
+
+-- 2. Snipebot (Крутилка)
+local snipebotEnabled = false
+createToggle("Snipebot (Spin)", function(state)
+	snipebotEnabled = state
+end)
+
+-- 3. Fling
+local flingEnabled = false
+createToggle("Fling", function(state)
+	flingEnabled = state
+	if state then
+		task.spawn(function()
+			while flingEnabled do
+				RunService.Heartbeat:Wait()
+				pcall(function()
+					local char = LocalPlayer.Character
+					local hrp = char and char:FindFirstChild("HumanoidRootPart")
+					if hrp then
+						local vel = hrp.Velocity
+						hrp.Velocity = vel * 10000 + Vector3.new(0, 10000, 0)
+						RunService.RenderStepped:Wait()
+						hrp.Velocity = vel
+					end
+				end)
+			end
+		end)
+	end
+end)
+
+-- 4. Magnet (Липучка)
+local magnetEnabled = false
+local attachedPlayers = {}
+
+createToggle("Magnet (Touch)", function(state)
+	magnetEnabled = state
+	if not state then
+		attachedPlayers = {}
+	end
+end)
+
+-- 5. Freeze Touch
+local freezeTouchEnabled = false
+local frozenPlayers = {}
+
+createToggle("Freeze Touch", function(state)
+	freezeTouchEnabled = state
+	if not state then
+		for plr, _ in pairs(frozenPlayers) do
+			if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+				plr.Character.HumanoidRootPart.Anchored = false
+			end
+		end
+		frozenPlayers = {}
+	end
+end)
+
+-- 6. Camera Shaker
+local cameraShakerEnabled = false
+createToggle("Camera Shaker Aura", function(state)
+	cameraShakerEnabled = state
+end)
+
+-- === ОБРАБОТЧИК КАСАНИЙ (TOUCH EVENT) ===
+local function setupTouch(char)
+	if not char then return end
+	local hrp = char:WaitForChild("HumanoidRootPart", 5)
+	if not hrp then return end
+
+	hrp.Touched:Connect(function(hit)
+		local targetChar = hit.Parent
+		if not targetChar then return end
+		local targetPlr = Players:GetPlayerFromCharacter(targetChar)
+
+		if targetPlr and targetPlr ~= LocalPlayer then
+			-- Магнит
+			if magnetEnabled then
+				if not table.find(attachedPlayers, targetPlr) then
+					table.insert(attachedPlayers, targetPlr)
+				end
+			end
+
+			-- Фриз при касании
+			if freezeTouchEnabled then
+				local targetHrp = targetChar:FindFirstChild("HumanoidRootPart")
+				if targetHrp then
+					targetHrp.Anchored = true
+					frozenPlayers[targetPlr] = true
+				end
+			end
+		end
+	end)
+end
+
+if LocalPlayer.Character then setupTouch(LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(setupTouch)
+
+-- === ОСНОВНОЙ ЦИКЛ РЕНДЕРА ===
+RunService.RenderStepped:Connect(function()
+	local myChar = LocalPlayer.Character
+	local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+
+	-- Удержание скорости
+	if speedEnabled and myChar then
+		local hum = myChar:FindFirstChildOfClass("Humanoid")
+		if hum then hum.WalkSpeed = 32 end
+	end
+
+	-- Snipebot (Вращение)
+	if snipebotEnabled and myHrp then
+		myHrp.CFrame = myHrp.CFrame * CFrame.Angles(0, math.rad(180), 0)
+	end
+
+	-- Логика Магнита (Удержание прилипших игроков)
+	if magnetEnabled and myHrp then
+		for i = #attachedPlayers, 1, -1 do
+			local p = attachedPlayers[i]
+			if p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+				local tHrp = p.Character.HumanoidRootPart
+				tHrp.CFrame = myHrp.CFrame * CFrame.new((i % 2 == 0 and 2.5 or -2.5), 0, math.floor(i / 2) * 2 + 2)
+			else
+				table.remove(attachedPlayers, i)
+			end
+		end
+	end
+
+	-- Логика Camera Shaker (Аура тряски вокруг)
+	if cameraShakerEnabled and myHrp then
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+				local tHrp = p.Character.HumanoidRootPart
+				local dist = (myHrp.Position - tHrp.Position).Magnitude
+				if dist <= 20 then
+					tHrp.CFrame = tHrp.CFrame * CFrame.Angles(
+						math.rad(math.random(-15, 15)),
+						math.rad(math.random(-15, 15)),
+						math.rad(math.random(-15, 15))
+					)
+				end
+			end
+		end
+	end
+end)
