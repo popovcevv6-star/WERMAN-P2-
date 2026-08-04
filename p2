@@ -31,7 +31,7 @@ local function stroke(obj, color, thickness)
 	return s
 end
 
--- Круглая кнопка открытия меню
+-- Круглая кнопка меню
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "ToggleCircle"
 ToggleBtn.Parent = ScreenGui
@@ -90,7 +90,7 @@ HeaderLine.Size = UDim2.new(1, 0, 0, 1)
 HeaderLine.BackgroundColor3 = Color3.fromRGB(30, 35, 50)
 HeaderLine.BorderSizePixel = 0
 
--- Контейнер для прокрутки (ScrollingFrame)
+-- Контейнер со скроллом
 local Container = Instance.new("ScrollingFrame")
 Container.Parent = MainFrame
 Container.BackgroundTransparency = 1
@@ -114,7 +114,7 @@ Padding.PaddingLeft = UDim.new(0, 10)
 Padding.PaddingRight = UDim.new(0, 10)
 Padding.PaddingBottom = UDim.new(0, 10)
 
--- Конструктор кнопок
+-- Конструктор переключателей
 local function createToggle(titleText, callback)
 	local toggle = Instance.new("TextButton")
 	toggle.Parent = Container
@@ -169,7 +169,7 @@ local function createToggle(titleText, callback)
 	end)
 end
 
--- === ТАБЛИЦЫ СОСТОЯНИЙ ===
+-- === СОСТОЯНИЯ ===
 local states = {
 	speed = false,
 	snipebot = false,
@@ -189,10 +189,10 @@ local attachedPlayers = {}
 local frozenPlayers = {}
 local espBoxes = {}
 
--- === КНОПКИ МЕНЮ ===
+-- Кнопки
 createToggle("Speed 2x", function(s) states.speed = s end)
 createToggle("Snipebot (Spin)", function(s) states.snipebot = s end)
-createToggle("Fling", function(s) states.fling = s end)
+createToggle("Touch Fling (Target)", function(s) states.fling = s end)
 createToggle("Magnet (Touch)", function(s) 
 	states.magnet = s 
 	if not s then attachedPlayers = {} end 
@@ -218,9 +218,9 @@ createToggle("Heavy Mass (Тяжёлый груз)", function(s) states.heavyMas
 createToggle("Click TP (Ctrl / Click)", function(s) states.clickTP = s end)
 createToggle("Dance Disease", function(s) states.danceDisease = s end)
 createToggle("Seizure Character", function(s) states.seizure = s end)
-createToggle("Reverse Fling (Магнитный)", function(s) states.reverseFling = s end)
+createToggle("Reverse Fling (Aura)", function(s) states.reverseFling = s end)
 
--- === ОБРАБОТКА CLICK TP ===
+-- Click TP
 UserInputService.InputBegan:Connect(function(input, gpe)
 	if gpe or not states.clickTP then return end
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -233,7 +233,8 @@ UserInputService.InputBegan:Connect(function(input, gpe)
 	end
 end)
 
--- === ОБРАБОТЧИК КАСАНИЙ ===
+-- === РАБОЧИЙ ТАРГЕТНЫЙ TOUCH FLING (БЕЗ ВЫЛЕТА СЕБЯ) ===
+local isFlinging = false
 local function setupTouch(char)
 	if not char then return end
 	local hrp = char:WaitForChild("HumanoidRootPart", 5)
@@ -245,18 +246,50 @@ local function setupTouch(char)
 		local targetPlr = Players:GetPlayerFromCharacter(targetChar)
 
 		if targetPlr and targetPlr ~= LocalPlayer then
+			local targetHrp = targetChar:FindFirstChild("HumanoidRootPart")
+
+			-- ИСТИННЫЙ TOUCH FLING (Телепорт-срез по целевому персонажу)
+			if states.fling and targetHrp and not isFlinging then
+				isFlinging = true
+				task.spawn(function()
+					local originalCF = hrp.CFrame
+					local oldVel = hrp.Velocity
+					local startTime = tick()
+					
+					-- 0.2 секунды жесткого контакта именно с жертвой
+					while tick() - startTime < 0.2 and targetHrp and targetHrp.Parent and hrp and hrp.Parent do
+						RunService.Heartbeat:Wait()
+						hrp.CFrame = targetHrp.CFrame
+						hrp.Velocity = Vector3.new(30000, 30000, 30000)
+						hrp.RotVelocity = Vector3.new(50000, 50000, 50000)
+					end
+
+					-- Возврат себя на место и сброс импульса
+					if hrp and hrp.Parent then
+						hrp.CFrame = originalCF
+						hrp.Velocity = Vector3.new(0, 0, 0)
+						hrp.RotVelocity = Vector3.new(0, 0, 0)
+					end
+					
+					-- Импульс отталкивания на саму жертву
+					pcall(function()
+						targetHrp.AssemblyLinearVelocity = Vector3.new(math.random(-20000, 20000), 30000, math.random(-20000, 20000))
+					end)
+					
+					task.wait(0.1)
+					isFlinging = false
+				end)
+			end
+
 			-- Magnet
 			if states.magnet and not table.find(attachedPlayers, targetPlr) then
 				table.insert(attachedPlayers, targetPlr)
 			end
 
 			-- Freeze Touch
-			if states.freezeTouch then
-				local targetHrp = targetChar:FindFirstChild("HumanoidRootPart")
-				if targetHrp then
-					targetHrp.Anchored = true
-					frozenPlayers[targetPlr] = true
-				end
+			if states.freezeTouch and targetHrp then
+				targetHrp.Anchored = true
+				frozenPlayers[targetPlr] = true
 			end
 
 			-- Heavy Mass
@@ -273,18 +306,15 @@ local function setupTouch(char)
 				local hum = targetChar:FindFirstChildOfClass("Humanoid")
 				if hum then
 					local anim = Instance.new("Animation")
-					anim.AnimationId = "rbxassetid://3337781730" -- Танец
+					anim.AnimationId = "rbxassetid://3337781730"
 					local track = hum:LoadAnimation(anim)
 					track:Play()
 				end
 			end
 
 			-- Seizure Character
-			if states.seizure then
-				local targetHrp = targetChar:FindFirstChild("HumanoidRootPart")
-				if targetHrp then
-					targetHrp.CFrame = targetHrp.CFrame * CFrame.Angles(math.rad(math.random(-90, 90)), math.rad(math.random(-90, 90)), 0)
-				end
+			if states.seizure and targetHrp then
+				targetHrp.CFrame = targetHrp.CFrame * CFrame.Angles(math.rad(math.random(-90, 90)), math.rad(math.random(-90, 90)), 0)
 			end
 		end
 	end)
@@ -293,29 +323,23 @@ end
 if LocalPlayer.Character then setupTouch(LocalPlayer.Character) end
 LocalPlayer.CharacterAdded:Connect(setupTouch)
 
--- === ОСНОВНОЙ ЦИКЛ ОПТИМИЗАЦИИ (RENDERSTEPPED) ===
+-- === ОСНОВНОЙ ЦИКЛ РЕНДЕРА ===
 RunService.RenderStepped:Connect(function()
 	local myChar = LocalPlayer.Character
 	local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
 
-	-- Speed
+	-- Speed 2x
 	if states.speed and myChar then
 		local hum = myChar:FindFirstChildOfClass("Humanoid")
 		if hum then hum.WalkSpeed = 32 end
 	end
 
-	-- Snipebot
+	-- Snipebot (Spin)
 	if states.snipebot and myHrp then
 		myHrp.CFrame = myHrp.CFrame * CFrame.Angles(0, math.rad(180), 0)
 	end
 
-	-- Fling Logic
-	if states.fling and myHrp then
-		local vel = myHrp.Velocity
-		myHrp.Velocity = vel * 1000 + Vector3.new(0, 1000, 0)
-	end
-
-	-- Magnet Logic
+	-- Magnet (Прилипание)
 	if states.magnet and myHrp then
 		for i = #attachedPlayers, 1, -1 do
 			local p = attachedPlayers[i]
@@ -344,13 +368,16 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 
-	-- Reverse Fling
+	-- Reverse Fling Aura
 	if states.reverseFling and myHrp then
 		for _, p in ipairs(Players:GetPlayers()) do
 			if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
 				local tHrp = p.Character.HumanoidRootPart
 				if (myHrp.Position - tHrp.Position).Magnitude <= 15 then
-					tHrp.Velocity = (tHrp.Position - myHrp.Position).Unit * 5000 + Vector3.new(0, 2000, 0)
+					pcall(function()
+						local dir = (tHrp.Position - myHrp.Position).Unit
+						tHrp.AssemblyLinearVelocity = dir * 10000 + Vector3.new(0, 5000, 0)
+					end)
 				end
 			end
 		end
