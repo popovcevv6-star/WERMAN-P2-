@@ -1,18 +1,15 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 
 if not LocalPlayer then return end
 
--- Очистка старого GUI
 pcall(function()
 	local oldGui = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("WermanP2Gui")
 	if oldGui then oldGui:Destroy() end
 end)
 
--- === СОЗДАНИЕ ИНТЕРФЕЙСА ===
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "WermanP2Gui"
 ScreenGui.ResetOnSpawn = false
@@ -32,29 +29,27 @@ local function stroke(obj, color, thickness)
 	return s
 end
 
--- Плавающая кнопка
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "ToggleCircle"
 ToggleBtn.Parent = ScreenGui
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
 ToggleBtn.Position = UDim2.new(0.03, 0, 0.4, 0)
 ToggleBtn.Size = UDim2.new(0, 52, 0, 52)
-ToggleBtn.Text = "⚡"
+ToggleBtn.Text = "P2"
 ToggleBtn.TextColor3 = Color3.fromRGB(0, 230, 255)
-ToggleBtn.TextSize = 24
+ToggleBtn.TextSize = 18
 ToggleBtn.Font = Enum.Font.GothamBold
 ToggleBtn.Active = true
 ToggleBtn.Draggable = true
 round(ToggleBtn, 26)
 stroke(ToggleBtn, Color3.fromRGB(0, 230, 255), 2)
 
--- Главное окно
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
 MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-MainFrame.Size = UDim2.new(0, 350, 0, 450)
+MainFrame.Size = UDim2.new(0, 340, 0, 440)
 MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
 MainFrame.ClipsDescendants = true
 MainFrame.Visible = false
@@ -67,7 +62,6 @@ ToggleBtn.MouseButton1Click:Connect(function()
 	MainFrame.Visible = not MainFrame.Visible
 end)
 
--- Шапка
 local Header = Instance.new("Frame")
 Header.Parent = MainFrame
 Header.Size = UDim2.new(1, 0, 0, 45)
@@ -78,7 +72,7 @@ local Title = Instance.new("TextLabel")
 Title.Parent = Header
 Title.Size = UDim2.new(1, -20, 1, 0)
 Title.Position = UDim2.new(0, 15, 0, 0)
-Title.Text = "werman p2 (Ultimate)"
+Title.Text = "werman p2"
 Title.TextColor3 = Color3.fromRGB(0, 230, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.GothamBold
@@ -91,7 +85,6 @@ HeaderLine.Size = UDim2.new(1, 0, 0, 1)
 HeaderLine.BackgroundColor3 = Color3.fromRGB(30, 35, 50)
 HeaderLine.BorderSizePixel = 0
 
--- Контейнер со скроллом
 local Container = Instance.new("ScrollingFrame")
 Container.Parent = MainFrame
 Container.BackgroundTransparency = 1
@@ -115,7 +108,6 @@ Padding.PaddingLeft = UDim.new(0, 10)
 Padding.PaddingRight = UDim.new(0, 10)
 Padding.PaddingBottom = UDim.new(0, 10)
 
--- Конструктор переключателей
 local function createToggle(titleText, callback)
 	local toggle = Instance.new("TextButton")
 	toggle.Parent = Container
@@ -170,33 +162,31 @@ local function createToggle(titleText, callback)
 	end)
 end
 
--- === СОСТОЯНИЯ ===
 local states = {
 	speed = false,
-	snipebot = false,
+	spinbot = false,
+	extremeSpin = false,
 	fling = false,
+	physicsTornado = false,
+	timeStop = false,
+	freezeScreen = false,
 	magnet = false,
 	freezeTouch = false,
+	headSpin = false,
+	dismantle = false,
 	cameraShaker = false,
 	esp = false,
 	heavyMass = false,
 	clickTP = false,
 	danceDisease = false,
 	seizure = false,
-	reverseFling = false,
-	-- Новые фичи
-	tornado = false,
-	rainbowAura = false,
-	rgbWorld = false,
-	headSpin = false,
-	dismantle = false
+	reverseFling = false
 }
 
 local attachedPlayers = {}
 local frozenPlayers = {}
 local espBoxes = {}
 
--- === Hidden Touch Fling (Код с фото) ===
 local hiddenfling = false
 local flingThread
 
@@ -222,10 +212,10 @@ local function startFling()
 	end
 end
 
--- КНОПКИ ОСНОВНЫЕ
 createToggle("Speed 2x", function(s) states.speed = s end)
-createToggle("Snipebot (Spin)", function(s) states.snipebot = s end)
-createToggle("Touch Fling (Как на фото)", function(s)
+createToggle("Spinbot 360", function(s) states.extremeSpin = s end)
+createToggle("Snipebot Spin", function(s) states.spinbot = s end)
+createToggle("Touch Fling", function(s)
 	hiddenfling = s
 	states.fling = s
 	if hiddenfling then
@@ -233,7 +223,24 @@ createToggle("Touch Fling (Как на фото)", function(s)
 		coroutine.resume(flingThread)
 	end
 end)
-createToggle("Magnet (Touch)", function(s) 
+createToggle("Time Stop", function(s) 
+	states.timeStop = s 
+	if not s then
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p ~= LocalPlayer and p.Character then
+				pcall(function()
+					local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+					local hum = p.Character:FindFirstChildOfClass("Humanoid")
+					if hrp then hrp.Anchored = false end
+					if hum then hum.WalkSpeed = 16 end
+				end)
+			end
+		end
+	end
+end)
+createToggle("Freeze Screen Touch", function(s) states.freezeScreen = s end)
+createToggle("Physics Tornado Aura", function(s) states.physicsTornado = s end)
+createToggle("Magnet Touch", function(s) 
 	states.magnet = s 
 	if not s then attachedPlayers = {} end 
 end)
@@ -246,24 +253,8 @@ createToggle("Freeze Touch", function(s)
 		frozenPlayers = {}
 	end
 end)
-
--- КНОПКИ ПРИКОЛЮХ (FUN / CHAOS)
-createToggle("🌀 Orbital Tornado Aura", function(s) states.tornado = s end)
-createToggle("🌈 Rainbow Self Aura", function(s) 
-	states.rainbowAura = s 
-	if not s and LocalPlayer.Character then
-		local h = LocalPlayer.Character:FindFirstChild("SelfRainbowHighlight")
-		if h then h:Destroy() end
-	end
-end)
-createToggle("🪩 RGB Disco World", function(s) 
-	states.rgbWorld = s 
-	if not s then Lighting.Ambient = Color3.fromRGB(128, 128, 128) end
-end)
-createToggle("🤪 Head Spin / Lag", function(s) states.headSpin = s end)
-createToggle("💥 Body Dismantle (Touch)", function(s) states.dismantle = s end)
-
--- ОСТАЛЬНЫЕ КНОПКИ
+createToggle("Head Spin Lag", function(s) states.headSpin = s end)
+createToggle("Body Dismantle Touch", function(s) states.dismantle = s end)
 createToggle("Camera Shaker Aura", function(s) states.cameraShaker = s end)
 createToggle("ESP Boxes", function(s) 
 	states.esp = s 
@@ -272,13 +263,12 @@ createToggle("ESP Boxes", function(s)
 		espBoxes = {}
 	end
 end)
-createToggle("Heavy Mass (Тяжёлый груз)", function(s) states.heavyMass = s end)
-createToggle("Click TP (Ctrl / Click)", function(s) states.clickTP = s end)
+createToggle("Heavy Mass", function(s) states.heavyMass = s end)
+createToggle("Click TP", function(s) states.clickTP = s end)
 createToggle("Dance Disease", function(s) states.danceDisease = s end)
 createToggle("Seizure Character", function(s) states.seizure = s end)
-createToggle("Reverse Fling (Aura)", function(s) states.reverseFling = s end)
+createToggle("Reverse Fling Aura", function(s) states.reverseFling = s end)
 
--- Click TP
 UserInputService.InputBegan:Connect(function(input, gpe)
 	if gpe or not states.clickTP then return end
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -291,7 +281,6 @@ UserInputService.InputBegan:Connect(function(input, gpe)
 	end
 end)
 
--- === ОБРАБОТКА КАСАНИЙ ===
 local function setupTouch(char)
 	if not char then return end
 	local hrp = char:WaitForChild("HumanoidRootPart", 5)
@@ -305,30 +294,33 @@ local function setupTouch(char)
 		if targetPlr and targetPlr ~= LocalPlayer then
 			local targetHrp = targetChar:FindFirstChild("HumanoidRootPart")
 
-			-- Dismantle (Разлом суставов)
+			if states.freezeScreen and targetHrp then
+				pcall(function()
+					targetHrp.CFrame = CFrame.new(0, -99999, 0)
+					targetHrp.Anchored = true
+				end)
+			end
+
 			if states.dismantle and targetChar then
 				for _, part in ipairs(targetChar:GetChildren()) do
 					if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
 						pcall(function()
 							part:BreakJoints()
-							part.Velocity = Vector3.new(math.random(-100, 100), 200, math.random(-100, 100))
+							part.AssemblyLinearVelocity = Vector3.new(math.random(-150, 150), 300, math.random(-150, 150))
 						end)
 					end
 				end
 			end
 
-			-- Magnet
 			if states.magnet and not table.find(attachedPlayers, targetPlr) then
 				table.insert(attachedPlayers, targetPlr)
 			end
 
-			-- Freeze Touch
 			if states.freezeTouch and targetHrp then
 				targetHrp.Anchored = true
 				frozenPlayers[targetPlr] = true
 			end
 
-			-- Heavy Mass
 			if states.heavyMass then
 				local hum = targetChar:FindFirstChildOfClass("Humanoid")
 				if hum then
@@ -337,7 +329,6 @@ local function setupTouch(char)
 				end
 			end
 
-			-- Dance Disease
 			if states.danceDisease then
 				local hum = targetChar:FindFirstChildOfClass("Humanoid")
 				if hum then
@@ -348,7 +339,6 @@ local function setupTouch(char)
 				end
 			end
 
-			-- Seizure
 			if states.seizure and targetHrp then
 				targetHrp.CFrame = targetHrp.CFrame * CFrame.Angles(math.rad(math.random(-90, 90)), math.rad(math.random(-90, 90)), 0)
 			end
@@ -359,39 +349,64 @@ end
 if LocalPlayer.Character then setupTouch(LocalPlayer.Character) end
 LocalPlayer.CharacterAdded:Connect(setupTouch)
 
--- === ОСНОВНОЙ ЦИКЛ ОБНОВЛЕНИЯ ===
 RunService.RenderStepped:Connect(function()
 	local myChar = LocalPlayer.Character
 	local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
-	local hue = (tick() % 4) / 4
-	local rainbowColor = Color3.fromHSV(hue, 1, 1)
 
-	-- Speed 2x
 	if states.speed and myChar then
 		local hum = myChar:FindFirstChildOfClass("Humanoid")
 		if hum then hum.WalkSpeed = 32 end
 	end
 
-	-- Rainbow Aura
-	if states.rainbowAura and myChar then
-		local hl = myChar:FindFirstChild("SelfRainbowHighlight")
-		if not hl then
-			hl = Instance.new("Highlight")
-			hl.Name = "SelfRainbowHighlight"
-			hl.FillTransparency = 0.5
-			hl.OutlineTransparency = 0
-			hl.Parent = myChar
+	if states.extremeSpin and myHrp then
+		local cam = workspace.CurrentCamera
+		if cam then
+			local lookVec = cam.CFrame.LookVector
+			local targetAngle = math.atan2(-lookVec.Z, lookVec.X) + math.rad(math.random(0, 360))
+			myHrp.CFrame = CFrame.new(myHrp.Position) * CFrame.Angles(0, targetAngle, 0)
 		end
-		hl.FillColor = rainbowColor
-		hl.OutlineColor = Color3.new(1, 1, 1)
 	end
 
-	-- RGB Disco World
-	if states.rgbWorld then
-		Lighting.Ambient = rainbowColor
+	if states.timeStop and myHrp then
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+				local tHrp = p.Character.HumanoidRootPart
+				local tHum = p.Character:FindFirstChildOfClass("Humanoid")
+				local dist = (myHrp.Position - tHrp.Position).Magnitude
+
+				if dist <= 80 then
+					pcall(function()
+						tHrp.Anchored = true
+						if tHum then tHum.WalkSpeed = 0 end
+					end)
+				end
+			end
+		end
 	end
 
-	-- Head Spin / Lag
+	if states.physicsTornado and myHrp then
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+				local tHrp = p.Character.HumanoidRootPart
+				local tHum = p.Character:FindFirstChildOfClass("Humanoid")
+				local dist = (myHrp.Position - tHrp.Position).Magnitude
+
+				if dist <= 30 then
+					pcall(function()
+						if tHum then
+							tHum:ChangeState(Enum.HumanoidStateType.Physics)
+						end
+						local dir = (myHrp.Position - tHrp.Position).Unit
+						local tangent = Vector3.new(-dir.Z, 0, dir.X)
+						
+						tHrp.AssemblyLinearVelocity = (tangent * 1200) + (dir * 300) + Vector3.new(0, 500, 0)
+						tHrp.AssemblyAngularVelocity = Vector3.new(4000, 4000, 4000)
+					end)
+				end
+			end
+		end
+	end
+
 	if states.headSpin and myChar then
 		local head = myChar:FindFirstChild("Head")
 		if head then
@@ -399,27 +414,10 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 
-	-- Tornado Aura (Смерч)
-	if states.tornado and myHrp then
-		local angle = tick() * 8
-		for i, p in ipairs(Players:GetPlayers()) do
-			if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-				local tHrp = p.Character.HumanoidRootPart
-				if (myHrp.Position - tHrp.Position).Magnitude <= 25 then
-					local radius = 8
-					local offset = Vector3.new(math.cos(angle + i) * radius, 2, math.sin(angle + i) * radius)
-					tHrp.CFrame = myHrp.CFrame * CFrame.new(offset)
-				end
-			end
-		end
-	end
-
-	-- Snipebot (Spin)
-	if states.snipebot and myHrp then
+	if states.spinbot and myHrp then
 		myHrp.CFrame = myHrp.CFrame * CFrame.Angles(0, math.rad(180), 0)
 	end
 
-	-- Magnet
 	if states.magnet and myHrp then
 		for i = #attachedPlayers, 1, -1 do
 			local p = attachedPlayers[i]
@@ -432,7 +430,6 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 
-	-- Camera Shaker
 	if states.cameraShaker and myHrp then
 		for _, p in ipairs(Players:GetPlayers()) do
 			if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
@@ -448,7 +445,6 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 
-	-- Reverse Fling Aura
 	if states.reverseFling and myHrp then
 		for _, p in ipairs(Players:GetPlayers()) do
 			if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
@@ -463,7 +459,6 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 
-	-- ESP Boxes
 	if states.esp then
 		for _, p in ipairs(Players:GetPlayers()) do
 			if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
@@ -472,7 +467,7 @@ RunService.RenderStepped:Connect(function()
 					box = Instance.new("Highlight")
 					box.Name = "ESP_Highlight"
 					box.FillColor = Color3.fromRGB(0, 230, 255)
-					box.FillTransparency = 0.6
+					box.FillTransparency = 0.7
 					box.OutlineColor = Color3.fromRGB(255, 255, 255)
 					box.OutlineTransparency = 0
 					box.Parent = p.Character
