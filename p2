@@ -6,12 +6,12 @@ local LocalPlayer = Players.LocalPlayer
 if not LocalPlayer then return end
 
 pcall(function()
-	local oldGui = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("WermanMatrixGui")
+	local oldGui = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("GrabControlGui")
 	if oldGui then oldGui:Destroy() end
 end)
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "WermanMatrixGui"
+ScreenGui.Name = "GrabControlGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -29,365 +29,119 @@ local function stroke(obj, color, thickness)
 	return s
 end
 
-local ToggleBtn = Instance.new("TextButton")
-ToggleBtn.Name = "ToggleBtn"
-ToggleBtn.Parent = ScreenGui
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(8, 12, 8)
-ToggleBtn.Position = UDim2.new(0.03, 0, 0.4, 0)
-ToggleBtn.Size = UDim2.new(0, 52, 0, 52)
-ToggleBtn.Text = "WM"
-ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 102)
-ToggleBtn.TextSize = 18
-ToggleBtn.Font = Enum.Font.GothamBold
-ToggleBtn.Active = true
-ToggleBtn.Draggable = true
-round(ToggleBtn, 26)
-stroke(ToggleBtn, Color3.fromRGB(0, 255, 102), 2)
+local BtnV = Instance.new("TextButton")
+BtnV.Name = "BtnV"
+BtnV.Parent = ScreenGui
+BtnV.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+BtnV.Position = UDim2.new(0.05, 0, 0.4, 0)
+BtnV.Size = UDim2.new(0, 45, 0, 45)
+BtnV.Text = "V"
+BtnV.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnV.TextSize = 18
+BtnV.Font = Enum.Font.GothamBold
+BtnV.Active = true
+BtnV.Draggable = true
+round(BtnV, 8)
+stroke(BtnV, Color3.fromRGB(60, 60, 60), 1)
 
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Parent = ScreenGui
-MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-MainFrame.Size = UDim2.new(0, 340, 0, 420)
-MainFrame.BackgroundColor3 = Color3.fromRGB(8, 12, 8)
-MainFrame.ClipsDescendants = true
-MainFrame.Visible = false
-MainFrame.Active = true
-MainFrame.Draggable = true
-round(MainFrame, 16)
-stroke(MainFrame, Color3.fromRGB(0, 255, 102), 2)
+local BtnL = Instance.new("TextButton")
+BtnL.Name = "BtnL"
+BtnL.Parent = ScreenGui
+BtnL.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+BtnL.Position = UDim2.new(0.05, 0, 0.5, 0)
+BtnL.Size = UDim2.new(0, 45, 0, 45)
+BtnL.Text = "L"
+BtnL.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnL.TextSize = 18
+BtnL.Font = Enum.Font.GothamBold
+BtnL.Active = true
+BtnL.Draggable = true
+round(BtnL, 8)
+stroke(BtnL, Color3.fromRGB(60, 60, 60), 1)
 
-ToggleBtn.MouseButton1Click:Connect(function()
-	MainFrame.Visible = not MainFrame.Visible
-end)
+local targetCharacter = nil
+local grabDistance = 15
+local isSelectMode = false
+local grabConnection = nil
 
-local Header = Instance.new("Frame")
-Header.Parent = MainFrame
-Header.Size = UDim2.new(1, 0, 0, 45)
-Header.BackgroundColor3 = Color3.fromRGB(12, 18, 12)
-Header.BorderSizePixel = 0
+local function releaseTarget()
+	if grabConnection then
+		grabConnection:Disconnect()
+		grabConnection = nil
+	end
+	if targetCharacter then
+		pcall(function()
+			local hrp = targetCharacter:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				hrp.AssemblyLinearVelocity = Vector3.new(0, -5, 0)
+			end
+		end)
+	end
+	targetCharacter = nil
+	isSelectMode = false
+	BtnV.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+end
 
-local Title = Instance.new("TextLabel")
-Title.Parent = Header
-Title.Size = UDim2.new(1, -20, 1, 0)
-Title.Position = UDim2.new(0, 15, 0, 0)
-Title.Text = "WERMAN MATRIX"
-Title.TextColor3 = Color3.fromRGB(0, 255, 102)
-Title.TextSize = 18
-Title.Font = Enum.Font.GothamBold
-Title.TextXAlignment = Enum.TextXAlignment.Left
-
-local HeaderLine = Instance.new("Frame")
-HeaderLine.Parent = Header
-HeaderLine.Position = UDim2.new(0, 0, 1, -1)
-HeaderLine.Size = UDim2.new(1, 0, 0, 1)
-HeaderLine.BackgroundColor3 = Color3.fromRGB(0, 255, 102)
-HeaderLine.BorderSizePixel = 0
-
-local Container = Instance.new("ScrollingFrame")
-Container.Parent = MainFrame
-Container.BackgroundTransparency = 1
-Container.Position = UDim2.new(0, 0, 0, 45)
-Container.Size = UDim2.new(1, 0, 1, -45)
-Container.CanvasSize = UDim2.new(0, 0, 0, 0)
-Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
-Container.ScrollBarThickness = 4
-Container.ScrollBarImageColor3 = Color3.fromRGB(0, 255, 102)
-Container.Active = true
-
-local ListLayout = Instance.new("UIListLayout")
-ListLayout.Parent = Container
-ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-ListLayout.Padding = UDim.new(0, 8)
-
-local Padding = Instance.new("UIPadding")
-Padding.Parent = Container
-Padding.PaddingTop = UDim.new(0, 10)
-Padding.PaddingLeft = UDim.new(0, 10)
-Padding.PaddingRight = UDim.new(0, 10)
-Padding.PaddingBottom = UDim.new(0, 10)
-
-local function createToggle(titleText, callback)
-	local toggle = Instance.new("TextButton")
-	toggle.Parent = Container
-	toggle.BackgroundColor3 = Color3.fromRGB(14, 22, 14)
-	toggle.Size = UDim2.new(1, 0, 0, 42)
-	toggle.Text = ""
-	round(toggle, 10)
-	local strk = stroke(toggle, Color3.fromRGB(20, 40, 20), 1)
-
-	local title = Instance.new("TextLabel")
-	title.Parent = toggle
-	title.BackgroundTransparency = 1
-	title.Position = UDim2.new(0, 14, 0, 0)
-	title.Size = UDim2.new(0, 220, 1, 0)
-	title.Text = titleText
-	title.TextColor3 = Color3.fromRGB(200, 255, 200)
-	title.TextSize = 13
-	title.Font = Enum.Font.GothamSemibold
-	title.TextXAlignment = Enum.TextXAlignment.Left
-
-	local indicator = Instance.new("Frame")
-	indicator.Parent = toggle
-	indicator.AnchorPoint = Vector2.new(1, 0.5)
-	indicator.Position = UDim2.new(1, -12, 0.5, 0)
-	indicator.Size = UDim2.new(0, 38, 0, 20)
-	indicator.BackgroundColor3 = Color3.fromRGB(25, 35, 25)
-	round(indicator, 10)
-
-	local circle = Instance.new("Frame")
-	circle.Parent = indicator
-	circle.AnchorPoint = Vector2.new(0, 0.5)
-	circle.Position = UDim2.new(0, 3, 0.5, 0)
-	circle.Size = UDim2.new(0, 14, 0, 14)
-	circle.BackgroundColor3 = Color3.fromRGB(100, 150, 100)
-	round(circle, 7)
-
-	local state = false
-	toggle.MouseButton1Click:Connect(function()
-		state = not state
-		if state then
-			indicator.BackgroundColor3 = Color3.fromRGB(0, 255, 102)
-			circle.Position = UDim2.new(1, -17, 0.5, 0)
-			circle.BackgroundColor3 = Color3.fromRGB(8, 12, 8)
-			strk.Color = Color3.fromRGB(0, 255, 102)
+BtnV.MouseButton1Click:Connect(function()
+	if targetCharacter then
+		releaseTarget()
+	else
+		isSelectMode = not isSelectMode
+		if isSelectMode then
+			BtnV.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 		else
-			indicator.BackgroundColor3 = Color3.fromRGB(25, 35, 25)
-			circle.Position = UDim2.new(0, 3, 0.5, 0)
-			circle.BackgroundColor3 = Color3.fromRGB(100, 150, 100)
-			strk.Color = Color3.fromRGB(20, 40, 20)
-		end
-		pcall(function() callback(state) end)
-	end)
-end
-
-local states = {
-	fling = false,
-	seatTrap = false,
-	spin360 = false,
-	cameraShaker = false,
-	wallWalk = false,
-	speed2x = false,
-	invisibleHead = false,
-	boxEsp = false
-}
-
-local hiddenfling = false
-local flingThread
-
-local function startFling()
-	local lp = LocalPlayer
-	local c, hrp, vel
-	local movel = 0.1
-
-	while hiddenfling do
-		RunService.Heartbeat:Wait()
-		c = lp.Character
-		hrp = c and c:FindFirstChild("HumanoidRootPart")
-
-		if hrp then
-			vel = hrp.Velocity
-			hrp.Velocity = vel * 10000 + Vector3.new(0, 10000, 0)
-			RunService.RenderStepped:Wait()
-			hrp.Velocity = vel
-			RunService.Stepped:Wait()
-			hrp.Velocity = vel + Vector3.new(0, movel, 0)
-			movel = -movel
-		end
-	end
-end
-
-createToggle("Touch Fling", function(s)
-	hiddenfling = s
-	states.fling = s
-	if hiddenfling then
-		flingThread = coroutine.create(startFling)
-		coroutine.resume(flingThread)
-	end
-end)
-createToggle("Invisible Seat", function(s) states.seatTrap = s end)
-createToggle("Spin 360", function(s) states.spin360 = s end)
-createToggle("Camera Shaker", function(s) states.cameraShaker = s end)
-createToggle("Wall Walk", function(s) states.wallWalk = s end)
-createToggle("Speed 2x", function(s) states.speed2x = s end)
-createToggle("Invisible Head", function(s) 
-	states.invisibleHead = s 
-	local char = LocalPlayer.Character
-	if char then
-		local head = char:FindFirstChild("Head")
-		if head then
-			local neck = head:FindFirstChild("Neck") or (char:FindFirstChild("Torso") and char.Torso:FindFirstChild("Neck")) or (char:FindFirstChild("UpperTorso") and char.UpperTorso:FindFirstChild("Neck"))
-			if neck then
-				neck.Enabled = not s
-			end
-		end
-	end
-end)
-createToggle("Box ESP", function(s) states.boxEsp = s end)
-
-local espFolder = Instance.new("Folder")
-espFolder.Name = "MatrixESP"
-espFolder.Parent = ScreenGui
-
-local function getBoundingBox(char)
-	local camera = workspace.CurrentCamera
-	if not char or not camera then return nil, false end
-
-	local minX, minY, maxX, maxY = math.huge, math.huge, -math.huge, -math.huge
-	local onScreen = false
-
-	for _, part in ipairs(char:GetChildren()) do
-		if part:IsA("BasePart") then
-			local cframe, size = part.CFrame, part.Size
-			local corners = {
-				cframe * Vector3.new(-size.X/2, -size.Y/2, -size.Z/2),
-				cframe * Vector3.new(size.X/2, -size.Y/2, -size.Z/2),
-				cframe * Vector3.new(-size.X/2, size.Y/2, -size.Z/2),
-				cframe * Vector3.new(size.X/2, size.Y/2, -size.Z/2),
-				cframe * Vector3.new(-size.X/2, -size.Y/2, size.Z/2),
-				cframe * Vector3.new(size.X/2, -size.Y/2, size.Z/2),
-				cframe * Vector3.new(-size.X/2, size.Y/2, size.Z/2),
-				cframe * Vector3.new(size.X/2, size.Y/2, size.Z/2)
-			}
-
-			for _, corner in ipairs(corners) do
-				local screenPos, isVisible = camera:WorldToViewportPoint(corner)
-				if isVisible then onScreen = true end
-				minX = math.min(minX, screenPos.X)
-				minY = math.min(minY, screenPos.Y)
-				maxX = math.max(maxX, screenPos.X)
-				maxY = math.max(maxY, screenPos.Y)
-			end
-		end
-	end
-
-	if onScreen then
-		return {
-			X = minX,
-			Y = minY,
-			Width = maxX - minX,
-			Height = maxY - minY
-		}, true
-	end
-	return nil, false
-end
-
-local function setupTouch(char)
-	if not char then return end
-	local hrp = char:WaitForChild("HumanoidRootPart", 5)
-	if not hrp then return end
-
-	hrp.Touched:Connect(function(hit)
-		local targetChar = hit.Parent
-		if not targetChar then return end
-		local targetPlr = Players:GetPlayerFromCharacter(targetChar)
-
-		if targetPlr and targetPlr ~= LocalPlayer then
-			local targetHrp = targetChar:FindFirstChild("HumanoidRootPart")
-
-			if states.seatTrap and targetHrp then
-				pcall(function()
-					local seat = Instance.new("Seat")
-					seat.Size = Vector3.new(1, 1, 1)
-					seat.Transparency = 1
-					seat.Anchored = false
-					seat.CFrame = targetHrp.CFrame + Vector3.new(0, 3, 0)
-					seat.Parent = workspace
-					local weld = Instance.new("Weld")
-					weld.Part0 = seat
-					weld.Part1 = targetHrp
-					weld.C0 = CFrame.new(0, 0, 0)
-					weld.Parent = seat
-					task.delay(3, function()
-						pcall(function() seat:Destroy() end)
-					end)
-				end)
-			end
-		end
-	end)
-end
-
-if LocalPlayer.Character then setupTouch(LocalPlayer.Character) end
-LocalPlayer.CharacterAdded:Connect(function(char)
-	setupTouch(char)
-	task.wait(0.5)
-	if states.invisibleHead then
-		local head = char:FindFirstChild("Head")
-		if head then
-			local neck = head:FindFirstChild("Neck") or (char:FindFirstChild("Torso") and char.Torso:FindFirstChild("Neck")) or (char:FindFirstChild("UpperTorso") and char.UpperTorso:FindFirstChild("Neck"))
-			if neck then neck.Enabled = false end
+			BtnV.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 		end
 	end
 end)
 
-RunService.RenderStepped:Connect(function()
-	local myChar = LocalPlayer.Character
-	local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+BtnL.MouseButton1Click:Connect(function()
+	releaseTarget()
+end)
 
-	if states.speed2x and myChar then
-		local hum = myChar:FindFirstChildOfClass("Humanoid")
-		if hum then hum.WalkSpeed = 32 end
-	end
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
 
-	if states.spin360 and myHrp then
-		local cam = workspace.CurrentCamera
-		if cam then
-			local lookVec = cam.CFrame.LookVector
-			local targetAngle = math.atan2(-lookVec.Z, lookVec.X) + math.rad(math.random(0, 360))
-			myHrp.CFrame = CFrame.new(myHrp.Position) * CFrame.Angles(0, targetAngle, 0)
-		end
-	end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		if isSelectMode and not targetCharacter then
+			local mouse = LocalPlayer:GetMouse()
+			local target = mouse.Target
 
-	if states.wallWalk and myHrp then
-		local raycastParams = RaycastParams.new()
-		raycastParams.FilterDescendantsInstances = {myChar}
-		raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-
-		local rayResult = workspace:Raycast(myHrp.Position, myHrp.CFrame.LookVector * 3, raycastParams)
-		if rayResult then
-			myHrp.AssemblyLinearVelocity = Vector3.new(myHrp.AssemblyLinearVelocity.X, 30, myHrp.AssemblyLinearVelocity.Z)
-		end
-	end
-
-	if states.cameraShaker and myHrp then
-		for _, p in ipairs(Players:GetPlayers()) do
-			if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-				local tHrp = p.Character.HumanoidRootPart
-				if (myHrp.Position - tHrp.Position).Magnitude <= 20 then
-					tHrp.CFrame = tHrp.CFrame * CFrame.Angles(
-						math.rad(math.random(-15, 15)),
-						math.rad(math.random(-15, 15)),
-						math.rad(math.random(-15, 15))
-					)
+			if target and target.Parent then
+				local char = target.Parent
+				if not char:FindFirstChild("Humanoid") then
+					char = char.Parent
 				end
-			end
-		end
-	end
 
-	espFolder:ClearAllChildren()
-	if states.boxEsp then
-		for _, p in ipairs(Players:GetPlayers()) do
-			if p ~= LocalPlayer and p.Character then
-				local box, visible = getBoundingBox(p.Character)
-				if visible and box then
-					local boxGui = Instance.new("Frame")
-					boxGui.BackgroundTransparency = 1
-					boxGui.Position = UDim2.new(0, box.X, 0, box.Y)
-					boxGui.Size = UDim2.new(0, box.Width, 0, box.Height)
-					boxGui.Parent = espFolder
-					
-					stroke(boxGui, Color3.fromRGB(0, 255, 102), 1.5)
+				local plr = Players:GetPlayerFromCharacter(char)
+				if plr and plr ~= LocalPlayer and char:FindFirstChild("HumanoidRootPart") then
+					targetCharacter = char
+					isSelectMode = false
+					BtnV.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
 
-					local nameLabel = Instance.new("TextLabel")
-					nameLabel.Parent = boxGui
-					nameLabel.BackgroundTransparency = 1
-					nameLabel.Position = UDim2.new(0, 0, 0, -18)
-					nameLabel.Size = UDim2.new(1, 0, 0, 15)
-					nameLabel.Text = p.Name
-					nameLabel.TextColor3 = Color3.fromRGB(0, 255, 102)
-					nameLabel.TextSize = 11
-					nameLabel.Font = Enum.Font.GothamBold
+					local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+					local targetHrp = targetCharacter:FindFirstChild("HumanoidRootPart")
+
+					if myHrp and targetHrp then
+						grabDistance = (targetHrp.Position - myHrp.Position).Magnitude
+					else
+						grabDistance = 15
+					end
+
+					grabConnection = RunService.RenderStepped:Connect(function()
+						if targetCharacter and targetCharacter:FindFirstChild("HumanoidRootPart") then
+							local cam = workspace.CurrentCamera
+							if cam then
+								local mousePos = mouse.Hit.Position
+								local targetHrp = targetCharacter:FindFirstChild("HumanoidRootPart")
+								targetHrp.CFrame = CFrame.new(mousePos)
+								targetHrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+								targetHrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+							end
+						else
+							releaseTarget()
+						end
+					end)
 				end
 			end
 		end
