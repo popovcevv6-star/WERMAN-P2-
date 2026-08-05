@@ -1,16 +1,17 @@
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 if not LocalPlayer then return end
 
 pcall(function()
-	local oldGui = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("FlingControlGui")
+	local oldGui = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("TargetFlingGui")
 	if oldGui then oldGui:Destroy() end
 end)
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "FlingControlGui"
+ScreenGui.Name = "TargetFlingGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -33,32 +34,104 @@ BtnFling.Name = "BtnFling"
 BtnFling.Parent = ScreenGui
 BtnFling.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 BtnFling.Position = UDim2.new(0.05, 0, 0.4, 0)
-BtnFling.Size = UDim2.new(0, 60, 0, 45)
-BtnFling.Text = "Fling"
+BtnFling.Size = UDim2.new(0, 65, 0, 45)
+BtnFling.Text = "TargetFling"
 BtnFling.TextColor3 = Color3.fromRGB(255, 255, 255)
-BtnFling.TextSize = 16
+BtnFling.TextSize = 12
 BtnFling.Font = Enum.Font.GothamBold
 BtnFling.Active = true
 BtnFling.Draggable = true
 round(BtnFling, 8)
 stroke(BtnFling, Color3.fromRGB(60, 60, 60), 1)
 
-local isFlingMode = false
+local isSelectMode = false
+local isFlinging = false
 
 BtnFling.MouseButton1Click:Connect(function()
-	isFlingMode = not isFlingMode
-	if isFlingMode then
-		BtnFling.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-	else
-		BtnFling.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	if not isFlinging then
+		isSelectMode = not isSelectMode
+		if isSelectMode then
+			BtnFling.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+		else
+			BtnFling.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+		end
 	end
 end)
 
+local function executeFling(targetChar)
+	local myChar = LocalPlayer.Character
+	local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+	local targetHrp = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+
+	if not myHrp or not targetHrp then return end
+
+	isFlinging = true
+	BtnFling.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+
+	local savedCFrame = myHrp.CFrame
+	local savedVelocity = myHrp.AssemblyLinearVelocity
+	local movel = 0.1
+	local flingTime = tick()
+
+	local heartbeatConnection
+	local renderConnection
+	local steppedConnection
+
+	heartbeatConnection = RunService.Heartbeat:Connect(function()
+		if not isFlinging or not myHrp or not targetHrp or not targetHrp.Parent then return end
+
+		myHrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, 0)
+		local vel = myHrp.Velocity
+		myHrp.Velocity = vel * 10000 + Vector3.new(0, 10000, 0)
+	end)
+
+	renderConnection = RunService.RenderStepped:Connect(function()
+		if not isFlinging or not myHrp then return end
+		local vel = myHrp.Velocity
+		myHrp.Velocity = vel
+	end)
+
+	steppedConnection = RunService.Stepped:Connect(function()
+		if not isFlinging or not myHrp then return end
+		local vel = myHrp.Velocity
+		myHrp.Velocity = vel + Vector3.new(0, movel, 0)
+		movel = -movel
+	end)
+
+	task.spawn(function()
+		while isFlinging do
+			task.wait()
+			if not targetHrp or not targetHrp.Parent then break end
+			
+			local targetVel = targetHrp.AssemblyLinearVelocity.Magnitude
+			if targetVel > 200 or (tick() - flingTime > 1.2) then
+				break
+			end
+		end
+
+		isFlinging = false
+
+		if heartbeatConnection then heartbeatConnection:Disconnect() end
+		if renderConnection then renderConnection:Disconnect() end
+		if steppedConnection then steppedConnection:Disconnect() end
+
+		task.wait(0.05)
+
+		if myHrp then
+			myHrp.CFrame = savedCFrame
+			myHrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+			myHrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+		end
+
+		BtnFling.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	end)
+end
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
+	if gameProcessed or isFlinging then return end
 
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		if isFlingMode then
+		if isSelectMode then
 			local mouse = LocalPlayer:GetMouse()
 			local target = mouse.Target
 
@@ -70,29 +143,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 
 				local plr = Players:GetPlayerFromCharacter(char)
 				if plr and plr ~= LocalPlayer and char:FindFirstChild("HumanoidRootPart") then
-					local hrp = char:FindFirstChild("HumanoidRootPart")
-					
-					isFlingMode = false
-					BtnFling.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-
-					task.spawn(function()
-						local startTime = tick()
-						while tick() - startTime < 0.3 do
-							if hrp and hrp.Parent then
-								hrp.AssemblyLinearVelocity = Vector3.new(
-									math.random(1000, 3000), 
-									5000, 
-									math.random(1000, 3000)
-								)
-								hrp.AssemblyAngularVelocity = Vector3.new(
-									math.random(1000, 5000), 
-									math.random(1000, 5000), 
-									math.random(1000, 5000)
-								)
-							end
-							task.wait()
-						end
-					end)
+					isSelectMode = false
+					executeFling(char)
 				end
 			end
 		end
