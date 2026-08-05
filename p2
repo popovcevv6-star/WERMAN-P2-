@@ -1,138 +1,121 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
-local LocalPlayer = Players.LocalPlayer
 
-if not LocalPlayer then return end
-
-pcall(function()
-	local oldGui = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("TargetFlingGui")
-	if oldGui then oldGui:Destroy() end
-end)
+local lp = Players.LocalPlayer
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "TargetFlingGui"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.Parent = lp:WaitForChild("PlayerGui")
 
-local function round(obj, r)
-	local c = Instance.new("UICorner")
-	c.CornerRadius = UDim.new(0, r)
-	c.Parent = obj
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 200, 0, 120)
+Frame.Position = UDim2.new(0.4, 0, 0.4, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Frame.BorderSizePixel = 0
+Frame.Active = true
+Frame.Draggable = true
+Frame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Title.Text = "Touch Fling"
+Title.TextColor3 = Color3.fromRGB(0, 255, 100)
+Title.TextScaled = true
+Title.Font = Enum.Font.SourceSansBold
+Title.Parent = Frame
+
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0.8, 0, 0, 50)
+ToggleButton.Position = UDim2.new(0.1, 0, 0.4, 0)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ToggleButton.Text = "OFF"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.TextScaled = true
+ToggleButton.Font = Enum.Font.SourceSansBold
+ToggleButton.Parent = Frame
+
+local hiddenfling = false
+local flingThread
+
+if not ReplicatedStorage:FindFirstChild("AntiFlingDetection") then
+	local detection = Instance.new("Decal")
+	detection.Name = "AntiFlingDetection"
+	detection.Parent = ReplicatedStorage
 end
 
-local function stroke(obj, color, thickness)
-	local s = Instance.new("UIStroke")
-	s.Color = color
-	s.Thickness = thickness or 1
-	s.Parent = obj
-	return s
+local function fling()
+	local c, hrp, vel, movel = nil, nil, nil, 0.1
+
+	while hiddenfling do
+		RunService.Heartbeat:Wait()
+		c = lp.Character
+		hrp = c and c:FindFirstChild("HumanoidRootPart")
+
+		if hrp then
+			vel = hrp.Velocity
+			hrp.Velocity = vel * 10000 + Vector3.new(0, 10000, 0)
+			RunService.RenderStepped:Wait()
+			hrp.Velocity = vel
+			RunService.Stepped:Wait()
+			hrp.Velocity = vel + Vector3.new(0, movel, 0)
+			movel = -movel
+		end
+	end
 end
 
-local BtnFling = Instance.new("TextButton")
-BtnFling.Name = "BtnFling"
-BtnFling.Parent = ScreenGui
-BtnFling.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-BtnFling.Position = UDim2.new(0.05, 0, 0.4, 0)
-BtnFling.Size = UDim2.new(0, 65, 0, 45)
-BtnFling.Text = "TargetFling"
-BtnFling.TextColor3 = Color3.fromRGB(255, 255, 255)
-BtnFling.TextSize = 12
-BtnFling.Font = Enum.Font.GothamBold
-BtnFling.Active = true
-BtnFling.Draggable = true
-round(BtnFling, 8)
-stroke(BtnFling, Color3.fromRGB(60, 60, 60), 1)
+ToggleButton.MouseButton1Click:Connect(function()
+	hiddenfling = not hiddenfling
+	ToggleButton.Text = hiddenfling and "ON" or "OFF"
+	ToggleButton.BackgroundColor3 = hiddenfling and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(50, 50, 50)
 
-local isSelectMode = false
-local isFlinging = false
+	if hiddenfling then
+		flingThread = coroutine.create(fling)
+		coroutine.resume(flingThread)
+	end
+end)
 
-BtnFling.MouseButton1Click:Connect(function()
-	if not isFlinging then
-		isSelectMode = not isSelectMode
-		if isSelectMode then
-			BtnFling.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-		else
-			BtnFling.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+local posHistory = {}
+local historyTime = 1.5
+
+RunService.Heartbeat:Connect(function()
+	local myChar = lp.Character
+	local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+	if myHrp then
+		local now = tick()
+		table.insert(posHistory, {time = now, cframe = myHrp.CFrame})
+		for i = #posHistory, 1, -1 do
+			if now - posHistory[i].time > (historyTime + 1) then
+				table.remove(posHistory, i)
+			end
 		end
 	end
 end)
 
-local function executeFling(targetChar)
-	local myChar = LocalPlayer.Character
-	local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
-	local targetHrp = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+local function getOldCFrame()
+	local targetTime = tick() - historyTime
+	local closestCFrame = nil
+	local minDiff = math.huge
 
-	if not myHrp or not targetHrp then return end
-
-	isFlinging = true
-	BtnFling.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
-
-	local savedCFrame = myHrp.CFrame
-	local savedVelocity = myHrp.AssemblyLinearVelocity
-	local movel = 0.1
-	local flingTime = tick()
-
-	local heartbeatConnection
-	local renderConnection
-	local steppedConnection
-
-	heartbeatConnection = RunService.Heartbeat:Connect(function()
-		if not isFlinging or not myHrp or not targetHrp or not targetHrp.Parent then return end
-
-		myHrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, 0)
-		local vel = myHrp.Velocity
-		myHrp.Velocity = vel * 10000 + Vector3.new(0, 10000, 0)
-	end)
-
-	renderConnection = RunService.RenderStepped:Connect(function()
-		if not isFlinging or not myHrp then return end
-		local vel = myHrp.Velocity
-		myHrp.Velocity = vel
-	end)
-
-	steppedConnection = RunService.Stepped:Connect(function()
-		if not isFlinging or not myHrp then return end
-		local vel = myHrp.Velocity
-		myHrp.Velocity = vel + Vector3.new(0, movel, 0)
-		movel = -movel
-	end)
-
-	task.spawn(function()
-		while isFlinging do
-			task.wait()
-			if not targetHrp or not targetHrp.Parent then break end
-			
-			local targetVel = targetHrp.AssemblyLinearVelocity.Magnitude
-			if targetVel > 200 or (tick() - flingTime > 1.2) then
-				break
-			end
+	for _, entry in ipairs(posHistory) do
+		local diff = math.abs(entry.time - targetTime)
+		if diff < minDiff then
+			minDiff = diff
+			closestCFrame = entry.cframe
 		end
+	end
 
-		isFlinging = false
-
-		if heartbeatConnection then heartbeatConnection:Disconnect() end
-		if renderConnection then renderConnection:Disconnect() end
-		if steppedConnection then steppedConnection:Disconnect() end
-
-		task.wait(0.05)
-
-		if myHrp then
-			myHrp.CFrame = savedCFrame
-			myHrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-			myHrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-		end
-
-		BtnFling.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-	end)
+	return closestCFrame
 end
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed or isFlinging then return end
+	if gameProcessed then return end
 
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		if isSelectMode then
-			local mouse = LocalPlayer:GetMouse()
+		if hiddenfling then
+			local mouse = lp:GetMouse()
 			local target = mouse.Target
 
 			if target and target.Parent then
@@ -142,11 +125,37 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 				end
 
 				local plr = Players:GetPlayerFromCharacter(char)
-				if plr and plr ~= LocalPlayer and char:FindFirstChild("HumanoidRootPart") then
-					isSelectMode = false
-					executeFling(char)
+				if plr and plr ~= lp and char:FindFirstChild("HumanoidRootPart") then
+					local myChar = lp.Character
+					local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+					local targetHrp = char:FindFirstChild("HumanoidRootPart")
+
+					if myHrp and targetHrp then
+						local returnCFrame = getOldCFrame() or myHrp.CFrame
+
+						task.spawn(function()
+							local startTime = tick()
+							local connection
+							
+							connection = RunService.Heartbeat:Connect(function()
+								if myHrp and targetHrp and targetHrp.Parent then
+									myHrp.CFrame = targetHrp.CFrame
+								end
+							end)
+
+							task.wait(0.8)
+
+							if connection then connection:Disconnect() end
+
+							if myHrp then
+								myHrp.CFrame = returnCFrame
+							end
+						end)
+					end
 				end
 			end
 		end
 	end
 end)
+
+print("Touch Fling загружен! Нажми кнопку для включения.")
