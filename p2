@@ -1,17 +1,16 @@
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 if not LocalPlayer then return end
 
 pcall(function()
-	local oldGui = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("GrabControlGui")
+	local oldGui = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("FlingControlGui")
 	if oldGui then oldGui:Destroy() end
 end)
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "GrabControlGui"
+ScreenGui.Name = "FlingControlGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -29,81 +28,37 @@ local function stroke(obj, color, thickness)
 	return s
 end
 
-local BtnV = Instance.new("TextButton")
-BtnV.Name = "BtnV"
-BtnV.Parent = ScreenGui
-BtnV.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-BtnV.Position = UDim2.new(0.05, 0, 0.4, 0)
-BtnV.Size = UDim2.new(0, 45, 0, 45)
-BtnV.Text = "V"
-BtnV.TextColor3 = Color3.fromRGB(255, 255, 255)
-BtnV.TextSize = 18
-BtnV.Font = Enum.Font.GothamBold
-BtnV.Active = true
-BtnV.Draggable = true
-round(BtnV, 8)
-stroke(BtnV, Color3.fromRGB(60, 60, 60), 1)
+local BtnFling = Instance.new("TextButton")
+BtnFling.Name = "BtnFling"
+BtnFling.Parent = ScreenGui
+BtnFling.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+BtnFling.Position = UDim2.new(0.05, 0, 0.4, 0)
+BtnFling.Size = UDim2.new(0, 60, 0, 45)
+BtnFling.Text = "Fling"
+BtnFling.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnFling.TextSize = 16
+BtnFling.Font = Enum.Font.GothamBold
+BtnFling.Active = true
+BtnFling.Draggable = true
+round(BtnFling, 8)
+stroke(BtnFling, Color3.fromRGB(60, 60, 60), 1)
 
-local BtnL = Instance.new("TextButton")
-BtnL.Name = "BtnL"
-BtnL.Parent = ScreenGui
-BtnL.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-BtnL.Position = UDim2.new(0.05, 0, 0.5, 0)
-BtnL.Size = UDim2.new(0, 45, 0, 45)
-BtnL.Text = "L"
-BtnL.TextColor3 = Color3.fromRGB(255, 255, 255)
-BtnL.TextSize = 18
-BtnL.Font = Enum.Font.GothamBold
-BtnL.Active = true
-BtnL.Draggable = true
-round(BtnL, 8)
-stroke(BtnL, Color3.fromRGB(60, 60, 60), 1)
+local isFlingMode = false
 
-local targetCharacter = nil
-local grabDistance = 15
-local isSelectMode = false
-local grabConnection = nil
-
-local function releaseTarget()
-	if grabConnection then
-		grabConnection:Disconnect()
-		grabConnection = nil
-	end
-	if targetCharacter then
-		pcall(function()
-			local hrp = targetCharacter:FindFirstChild("HumanoidRootPart")
-			if hrp then
-				hrp.AssemblyLinearVelocity = Vector3.new(0, -5, 0)
-			end
-		end)
-	end
-	targetCharacter = nil
-	isSelectMode = false
-	BtnV.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-end
-
-BtnV.MouseButton1Click:Connect(function()
-	if targetCharacter then
-		releaseTarget()
+BtnFling.MouseButton1Click:Connect(function()
+	isFlingMode = not isFlingMode
+	if isFlingMode then
+		BtnFling.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
 	else
-		isSelectMode = not isSelectMode
-		if isSelectMode then
-			BtnV.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-		else
-			BtnV.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-		end
+		BtnFling.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 	end
-end)
-
-BtnL.MouseButton1Click:Connect(function()
-	releaseTarget()
 end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		if isSelectMode and not targetCharacter then
+		if isFlingMode then
 			local mouse = LocalPlayer:GetMouse()
 			local target = mouse.Target
 
@@ -115,31 +70,27 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 
 				local plr = Players:GetPlayerFromCharacter(char)
 				if plr and plr ~= LocalPlayer and char:FindFirstChild("HumanoidRootPart") then
-					targetCharacter = char
-					isSelectMode = false
-					BtnV.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+					local hrp = char:FindFirstChild("HumanoidRootPart")
+					
+					isFlingMode = false
+					BtnFling.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 
-					local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-					local targetHrp = targetCharacter:FindFirstChild("HumanoidRootPart")
-
-					if myHrp and targetHrp then
-						grabDistance = (targetHrp.Position - myHrp.Position).Magnitude
-					else
-						grabDistance = 15
-					end
-
-					grabConnection = RunService.RenderStepped:Connect(function()
-						if targetCharacter and targetCharacter:FindFirstChild("HumanoidRootPart") then
-							local cam = workspace.CurrentCamera
-							if cam then
-								local mousePos = mouse.Hit.Position
-								local targetHrp = targetCharacter:FindFirstChild("HumanoidRootPart")
-								targetHrp.CFrame = CFrame.new(mousePos)
-								targetHrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-								targetHrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+					task.spawn(function()
+						local startTime = tick()
+						while tick() - startTime < 0.3 do
+							if hrp and hrp.Parent then
+								hrp.AssemblyLinearVelocity = Vector3.new(
+									math.random(1000, 3000), 
+									5000, 
+									math.random(1000, 3000)
+								)
+								hrp.AssemblyAngularVelocity = Vector3.new(
+									math.random(1000, 5000), 
+									math.random(1000, 5000), 
+									math.random(1000, 5000)
+								)
 							end
-						else
-							releaseTarget()
+							task.wait()
 						end
 					end)
 				end
