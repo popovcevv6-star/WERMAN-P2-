@@ -18,7 +18,7 @@ Frame.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Title.Text = "Touch Fling"
+Title.Text = "Spinbot x3"
 Title.TextColor3 = Color3.fromRGB(0, 255, 100)
 Title.TextScaled = true
 Title.Font = Enum.Font.SourceSansBold
@@ -34,8 +34,8 @@ ToggleButton.TextScaled = true
 ToggleButton.Font = Enum.Font.SourceSansBold
 ToggleButton.Parent = Frame
 
-local hiddenfling = false
-local flingThread
+local hiddenspin = false
+local spinThread
 
 if not ReplicatedStorage:FindFirstChild("AntiFlingDetection") then
 	local detection = Instance.new("Decal")
@@ -43,38 +43,35 @@ if not ReplicatedStorage:FindFirstChild("AntiFlingDetection") then
 	detection.Parent = ReplicatedStorage
 end
 
-local function fling()
+local function spin()
 	local lp = Players.LocalPlayer
-	local c, hrp, vel, movel = nil, nil, nil, 0.1
+	local c, hrp = nil, nil
+	local angle = 0
 
-	while hiddenfling do
+	while hiddenspin do
 		RunService.Heartbeat:Wait()
 		c = lp.Character
 		hrp = c and c:FindFirstChild("HumanoidRootPart")
 
 		if hrp then
-			vel = hrp.Velocity
-			hrp.Velocity = vel * 10000 + Vector3.new(0, 10000, 0)
-			RunService.RenderStepped:Wait()
-			hrp.Velocity = vel
-			RunService.Stepped:Wait()
-			hrp.Velocity = vel + Vector3.new(0, movel, 0)
-			movel = -movel
+			angle = angle + 150
+			hrp.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, math.rad(angle), 0)
+			hrp.AssemblyAngularVelocity = Vector3.new(0, 500, 0)
 		end
 	end
 end
 
 ToggleButton.MouseButton1Click:Connect(function()
-	hiddenfling = not hiddenfling
-	ToggleButton.Text = hiddenfling and "ON" or "OFF"
-	ToggleButton.BackgroundColor3 = hiddenfling and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(50, 50, 50)
+	hiddenspin = not hiddenspin
+	ToggleButton.Text = hiddenspin and "ON" or "OFF"
+	ToggleButton.BackgroundColor3 = hiddenspin and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(50, 50, 50)
 
-	if hiddenfling then
-		flingThread = coroutine.create(fling)
-		coroutine.resume(flingThread)
+	if hiddenspin then
+		spinThread = coroutine.create(spin)
+		coroutine.resume(spinThread)
 	else
-		hiddenfling = false
+		hiddenspin = false
 	end
 end)
 
-print("Touch Fling загружен! Нажми кнопку для включения.")
+print("Spinbot x3 загружен! Нажми кнопку для включения.")
