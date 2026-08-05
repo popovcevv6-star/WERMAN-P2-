@@ -139,11 +139,11 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 							
 							connection = RunService.Heartbeat:Connect(function()
 								if myHrp and targetHrp and targetHrp.Parent then
-									myHrp.CFrame = targetHrp.CFrame
+									myHrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, 3)
 								end
 							end)
 
-							task.wait(0.8)
+							task.wait(0.3)
 
 							if connection then connection:Disconnect() end
 
